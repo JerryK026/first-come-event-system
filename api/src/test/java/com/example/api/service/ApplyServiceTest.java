@@ -31,11 +31,12 @@ public class ApplyServiceTest {
 
     @Test
     public void 한번만응모() {
+        long countBefore = couponRepository.count();
         applyService.apply(1L);
 
-        long count = couponRepository.count();
+        long countAfter = couponRepository.count();
 
-        assertThat(count).isEqualTo(1);
+        assertThat(countAfter).isEqualTo(countBefore + 1);
     }
 
     @Test
@@ -62,5 +63,28 @@ public class ApplyServiceTest {
         long count = couponRepository.count();
 
         assertThat(count).isEqualTo(100);
+    }
+
+    @Test
+    public void 한명당_한개의_쿠폰만_발급() throws InterruptedException {
+        int threadCount = 1000;
+        ExecutorService executorService = Executors.newFixedThreadPool(32);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        for (int i = 0; i < threadCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    applyService.apply(1L);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        long count = couponRepository.count();
+
+        assertThat(count).isEqualTo(1);
     }
 }
